@@ -2,9 +2,10 @@
 
 
 const int PHOTO_PIN = A3;
-const int LED_PIN = 9;//the number of the LED pin
+const int PHOTO_ENABLE_PIN = 7;
+const int LED_PIN = 9;
 
-const int NUM_SAMPLES = 100;
+const int NUM_SAMPLES = 10;
 const int ACCEL_THRESHOLD = 4;
 const int PHOTO_THRESHOLD = 40;
 
@@ -25,7 +26,8 @@ unsigned long zTs = millis();
 /***** API *****/
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);//initialize the digital pin as an output
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED_PIN, INPUT);
   Serial.begin(9600);
 }
  
@@ -51,16 +53,24 @@ void turnOnLamp() {  Serial.println("turning on lamp"); digitalWrite(LED_PIN, HI
 void turnOffLamp() { Serial.println("turning off lamp"); digitalWrite(LED_PIN, LOW); }
 
 boolean detectIfDarkOut() {
-  int photoLevel =  readAnalogPin(PHOTO_PIN);
-  Serial.print("photoLevel: ");
-  Serial.println(photoLevel);
+  int photoEnabled = digitalRead(PHOTO_ENABLE_PIN);
   
-  if(photoLevel < PHOTO_THRESHOLD) {
-    Serial.println("dark");
-    return true;
+  if(photoEnabled == HIGH) {
+    int photoLevel =  readAnalogPin(PHOTO_PIN);
+    Serial.print("photoLevel: ");
+    Serial.println(photoLevel);
+    
+    if(photoLevel < PHOTO_THRESHOLD) {
+      Serial.println("dark");
+      return true;
+    }
+    Serial.println("not dark");
+    return false;
   }
-  Serial.println("not dark");
-  return false;
+  
+  Serial.println("light detection disabled");
+  return true;
+  
 
 }
 
