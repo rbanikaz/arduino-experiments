@@ -1,10 +1,12 @@
 
-//#include "Axis.h"
 
+
+const int PHOTO_PIN = A3;
 const int LED_PIN = 9;//the number of the LED pin
 
-const int NUM_SAMPLES = 10;
+const int NUM_SAMPLES = 100;
 const int ACCEL_THRESHOLD = 4;
+const int PHOTO_THRESHOLD = 40;
 
 const int IDLE_TIME_MILLIS = 1000 * 5;
 
@@ -20,33 +22,61 @@ const int zInput = A2;
 int zVal = 0;
 unsigned long zTs = millis();
 
+/***** API *****/
+
 void setup() {
   pinMode(LED_PIN, OUTPUT);//initialize the digital pin as an output
   Serial.begin(9600);
 }
  
+ 
 void loop() {
-  if(detectIfMoving()) {
-    digitalWrite(LED_PIN, HIGH);//turn the LED on
+  boolean isMoving = detectIfMoving();
+  boolean isDarkOut = detectIfDarkOut();
+  
+  if(isMoving && isDarkOut) {
+    turnOnLamp();
   } else {
-    digitalWrite(LED_PIN, LOW);//turn the LED on
+    turnOffLamp();
   }
   
   delay(1000);
+  Serial.println();
+}
+
+
+/***** Subroutines *****/
+
+void turnOnLamp() {  Serial.println("turning on lamp"); digitalWrite(LED_PIN, HIGH); }
+void turnOffLamp() { Serial.println("turning off lamp"); digitalWrite(LED_PIN, LOW); }
+
+boolean detectIfDarkOut() {
+  int photoLevel =  readAnalogPin(PHOTO_PIN);
+  Serial.print("photoLevel: ");
+  Serial.println(photoLevel);
   
+  if(photoLevel < PHOTO_THRESHOLD) {
+    Serial.println("dark");
+    return true;
+  }
+  Serial.println("not dark");
+  return false;
+
 }
 
 boolean detectIfMoving() {
-  Serial.println("Checking xAxis:");
+ 
   boolean xIsMoving = detectIfMoving(xInput, &xVal, &xTs);
-  Serial.println();
-  
-  Serial.println("Checking yAxis:");  
   boolean yIsMoving = detectIfMoving(yInput, &yVal, &yTs);
-  Serial.println();
-  
-  Serial.println("Checking zAxis:");  
   boolean zIsMoving = detectIfMoving(zInput, &zVal, &zTs);
+ 
+ 
+  Serial.print("xIsMoving: ");
+  Serial.print(xIsMoving);
+  Serial.print("; yIsMoving: ");
+  Serial.print(yIsMoving);
+  Serial.print("; zIsMoving: ");
+  Serial.print(zIsMoving);
   Serial.println();
   
   return xIsMoving || yIsMoving || zIsMoving;
@@ -64,7 +94,7 @@ boolean detectIfMoving(int axisPin, int* currentValue, unsigned long* timestamp)
     isMoving = false;
   }
   
-  printAxisData(newValue, *currentValue, elapsedTime, isMoving);
+  //printAxisData(newValue, *currentValue, elapsedTime, isMoving);
   
   *currentValue = newValue;
   
