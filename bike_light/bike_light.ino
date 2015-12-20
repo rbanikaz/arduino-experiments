@@ -1,33 +1,41 @@
 
+const boolean DEBUG = true;
 
-
-const int PHOTO_PIN = A3;
-const int PHOTO_ENABLE_PIN = 7;
+const int LIGHT_SENSOR_ENABLE_PIN = 7;
 const int LED_PIN = 9;
 
 const int NUM_SAMPLES = 10;
 const int ACCEL_THRESHOLD = 4;
-const int PHOTO_THRESHOLD = 40;
+const int LIGHT_THRESHOLD = 20;
 
 const int IDLE_TIME_MILLIS = 1000 * 5;
 
-const int xInput = A0;
+char* X_PIN_NAME = "x";
+const int X_PIN = A0;
 int xVal = 0;
 unsigned long xTs = millis();
 
-const int yInput = A1;
+char* Y_PIN_NAME = "y";
+const int Y_PIN = A1;
 int yVal = 0;
 unsigned long yTs = millis();
 
-const int zInput = A2;
+char* Z_PIN_NAME = "z";
+const int Z_PIN = A2;
 int zVal = 0;
 unsigned long zTs = millis();
+
+char* LIGHT_PIN_NAME = "light";
+const int LIGHT_PIN = A3;
+int lightVal = 0;
+unsigned long lightTs = millis();
+
 
 /***** API *****/
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
-  pinMode(LED_PIN, INPUT);
+  pinMode(LIGHT_SENSOR_ENABLE_PIN, INPUT);
   Serial.begin(9600);
 }
  
@@ -53,18 +61,16 @@ void turnOnLamp() {  Serial.println("turning on lamp"); digitalWrite(LED_PIN, HI
 void turnOffLamp() { Serial.println("turning off lamp"); digitalWrite(LED_PIN, LOW); }
 
 boolean detectIfDarkOut() {
-  int photoEnabled = digitalRead(PHOTO_ENABLE_PIN);
+  boolean isPhotoEnabled = digitalRead(LIGHT_SENSOR_ENABLE_PIN) == HIGH;
   
-  if(photoEnabled == HIGH) {
-    int photoLevel =  readAnalogPin(PHOTO_PIN);
-    Serial.print("photoLevel: ");
-    Serial.println(photoLevel);
+  if(isPhotoEnabled) {
+    boolean isDarkOut = detectPinStatus(LIGHT_PIN_NAME, LIGHT_PIN, LIGHT_THRESHOLD, IDLE_TIME_MILLIS, &lightVal, &lightTs);
     
-    if(photoLevel < PHOTO_THRESHOLD) {
-      Serial.println("dark");
+    if(isDarkOut) {
+      Serial.println("its dark out");
       return true;
     }
-    Serial.println("not dark");
+    Serial.println("not dark out");
     return false;
   }
   
@@ -76,9 +82,9 @@ boolean detectIfDarkOut() {
 
 boolean detectIfMoving() {
  
-  boolean xIsMoving = detectIfMoving(xInput, &xVal, &xTs);
-  boolean yIsMoving = detectIfMoving(yInput, &yVal, &yTs);
-  boolean zIsMoving = detectIfMoving(zInput, &zVal, &zTs);
+  boolean xIsMoving = detectPinStatus(X_PIN_NAME, X_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &xVal, &xTs);
+  boolean yIsMoving = detectPinStatus(Y_PIN_NAME, Y_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &yVal, &yTs);
+  boolean zIsMoving = detectPinStatus(Z_PIN_NAME, Z_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &zVal, &zTs);
  
  
   Serial.print("xIsMoving: ");
@@ -92,35 +98,40 @@ boolean detectIfMoving() {
   return xIsMoving || yIsMoving || zIsMoving;
 }
 
-boolean detectIfMoving(int axisPin, int* currentValue, unsigned long* timestamp) {
-  int newValue = readAnalogPin(axisPin);
+
+
+boolean detectPinStatus(char* pinName, int pin, int threshold, unsigned long timeOut, int* currentValue, unsigned long* timestamp) {
+  int newValue = readAnalogPin(pin);
   unsigned long now = millis();
   unsigned long elapsedTime = now - *timestamp;
-  boolean isMoving = true;
+  boolean pinStatus = true;
   
-  if(abs(newValue - *currentValue) > ACCEL_THRESHOLD) {
+  if(abs(newValue - *currentValue) > threshold) {
     *timestamp = now;
-  } else if(elapsedTime > IDLE_TIME_MILLIS) {
-    isMoving = false;
+  } else if(elapsedTime > timeOut) {
+    pinStatus = false;
   }
   
-  //printAxisData(newValue, *currentValue, elapsedTime, isMoving);
+  printPinStatus(pinName, newValue, *currentValue, elapsedTime, pinStatus);
   
   *currentValue = newValue;
   
-  return isMoving;
+  return pinStatus;
 }
 
-void printAxisData(int newValue, int currentValue, unsigned long elapsedTime, boolean isMoving) {
-  Serial.print("newValue: ");
-  Serial.print(newValue);
-  Serial.print("; currentValue: ");
-  Serial.print(currentValue);
-  Serial.print("; elapsedTime: ");
-  Serial.print(elapsedTime);
-  Serial.print("; isMoving: ");
-  Serial.print(isMoving);
-  Serial.println();
+void printPinStatus(char* pinName, int newValue, int currentValue, unsigned long elapsedTime, boolean pinStatus) {
+  if(DEBUG) {
+    Serial.print(pinName);
+    Serial.print(": newValue: ");
+    Serial.print(newValue);
+    Serial.print("; currentValue: ");
+    Serial.print(currentValue);
+    Serial.print("; elapsedTime: ");
+    Serial.print(elapsedTime);
+    Serial.print("; pinStatus: ");
+    Serial.print(pinStatus);
+    Serial.println();
+  }
  
 }
 
