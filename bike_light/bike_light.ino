@@ -25,10 +25,11 @@ const int Z_PIN = A2;
 int zVal = 0;
 unsigned long zTs = millis();
 
-char* LIGHT_PIN_NAME = "light";
 const int LIGHT_PIN = A3;
-int lightVal = 0;
+boolean currLightReading = false;
+boolean currLightStatus = false;
 unsigned long lightTs = millis();
+
 
 
 /***** API *****/
@@ -61,10 +62,10 @@ void turnOnLamp() {  Serial.println("turning on lamp"); digitalWrite(LED_PIN, HI
 void turnOffLamp() { Serial.println("turning off lamp"); digitalWrite(LED_PIN, LOW); }
 
 boolean detectIfDarkOut() {
-  boolean isPhotoEnabled = digitalRead(LIGHT_SENSOR_ENABLE_PIN) == HIGH;
+  boolean isLightSensorEnabled = digitalRead(LIGHT_SENSOR_ENABLE_PIN) == HIGH;
   
-  if(isPhotoEnabled) {
-    boolean isDarkOut = detectPinStatus(LIGHT_PIN_NAME, LIGHT_PIN, LIGHT_THRESHOLD, IDLE_TIME_MILLIS, &lightVal, &lightTs);
+  if(isLightSensorEnabled) {
+    boolean isDarkOut = detectLightStatus();
     
     if(isDarkOut) {
       Serial.println("its dark out");
@@ -76,15 +77,41 @@ boolean detectIfDarkOut() {
   
   Serial.println("light detection disabled");
   return true;
-  
-
 }
+
+
+
+boolean detectLightStatus() {
+  int lightValue = readAnalogPin(LIGHT_PIN);
+  
+  Serial.print("Read light value of ");
+  Serial.println(lightValue);
+  
+  boolean newLightReading = lightValue <= LIGHT_THRESHOLD;
+  
+  if(newLightReading != currLightReading) {
+    lightTs = millis();
+  } else {
+    unsigned long now = millis();
+    unsigned long elapsedTime = now - lightTs;
+    
+    if(elapsedTime > IDLE_TIME_MILLIS) {
+      Serial.println("updating light status");
+      currLightStatus = currLightReading;
+    }
+  }
+  
+  currLightReading = newLightReading;
+  
+  return currLightStatus;
+}
+
 
 boolean detectIfMoving() {
  
-  boolean xIsMoving = detectPinStatus(X_PIN_NAME, X_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &xVal, &xTs);
-  boolean yIsMoving = detectPinStatus(Y_PIN_NAME, Y_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &yVal, &yTs);
-  boolean zIsMoving = detectPinStatus(Z_PIN_NAME, Z_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &zVal, &zTs);
+  boolean xIsMoving = detectAccelStatus(X_PIN_NAME, X_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &xVal, &xTs);
+  boolean yIsMoving = detectAccelStatus(Y_PIN_NAME, Y_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &yVal, &yTs);
+  boolean zIsMoving = detectAccelStatus(Z_PIN_NAME, Z_PIN, ACCEL_THRESHOLD, IDLE_TIME_MILLIS, &zVal, &zTs);
  
  
   Serial.print("xIsMoving: ");
@@ -98,9 +125,7 @@ boolean detectIfMoving() {
   return xIsMoving || yIsMoving || zIsMoving;
 }
 
-
-
-boolean detectPinStatus(char* pinName, int pin, int threshold, unsigned long timeOut, int* currentValue, unsigned long* timestamp) {
+boolean detectAccelStatus(char* pinName, int pin, int threshold, unsigned long timeOut, int* currentValue, unsigned long* timestamp) {
   int newValue = readAnalogPin(pin);
   unsigned long now = millis();
   unsigned long elapsedTime = now - *timestamp;
@@ -112,27 +137,26 @@ boolean detectPinStatus(char* pinName, int pin, int threshold, unsigned long tim
     pinStatus = false;
   }
   
-  printPinStatus(pinName, newValue, *currentValue, elapsedTime, pinStatus);
+  printAccelStatus(pinName, newValue, *currentValue, elapsedTime, pinStatus);
   
   *currentValue = newValue;
   
   return pinStatus;
 }
 
-void printPinStatus(char* pinName, int newValue, int currentValue, unsigned long elapsedTime, boolean pinStatus) {
-  if(DEBUG) {
-    Serial.print(pinName);
-    Serial.print(": newValue: ");
-    Serial.print(newValue);
-    Serial.print("; currentValue: ");
-    Serial.print(currentValue);
-    Serial.print("; elapsedTime: ");
-    Serial.print(elapsedTime);
-    Serial.print("; pinStatus: ");
-    Serial.print(pinStatus);
-    Serial.println();
-  }
- 
+void printAccelStatus(char* pinName, int newValue, int currentValue, unsigned long elapsedTime, boolean pinStatus) {
+  
+  Serial.print(pinName);
+  Serial.print(": newValue: ");
+  Serial.print(newValue);
+  Serial.print("; currentValue: ");
+  Serial.print(currentValue);
+  Serial.print("; elapsedTime: ");
+  Serial.print(elapsedTime);
+  Serial.print("; pinStatus: ");
+  Serial.print(pinStatus);
+  Serial.println();
+
 }
 
 int readAnalogPin(int pin) {
@@ -145,8 +169,6 @@ int readAnalogPin(int pin) {
   }
   return reading/NUM_SAMPLES;
 }
-
-
 
  
 
